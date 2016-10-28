@@ -113,7 +113,7 @@ class DLMSearchIlcorsaronero {
 			$downPage = curl_exec($curlDown);
 			curl_close($curlDown);
 
-			preg_match_all("/value=\"(magnet:.+)\"/", $downPage, $output_array);
+			preg_match_all("/href=\"(magnet:.+?)\"/", $downPage, $output_array);
 			$download = $output_array[1][0];
                 
 
