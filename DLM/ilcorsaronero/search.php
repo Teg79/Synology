@@ -2,7 +2,7 @@
 class DLMSearchIlcorsaronero {
 
         
-        private $wurl = 'http://ilcorsaronero.info/';
+        private $wurl = 'https://ilcorsaronero.info/';
 
         
         private $qurl = 'argh.php?search=%s';
@@ -21,6 +21,7 @@ class DLMSearchIlcorsaronero {
         curl_setopt($curl, CURLOPT_RETURNTRANSFER,1);
         curl_setopt($curl, CURLOPT_TIMEOUT, 20);
         curl_setopt($curl, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en; rv:1.9.0.4) Gecko/2008102920 AdCentriaIM/1.7 Firefox/3.0.4');
+	curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($curl, CURLOPT_URL, sprintf($url, urlencode($query)));
         }
 
@@ -108,7 +109,8 @@ class DLMSearchIlcorsaronero {
 			curl_setopt_array($curlDown, array(
 			    CURLOPT_RETURNTRANSFER => 1,
 			    CURLOPT_URL => $page,
-			    CURLOPT_USERAGENT => 'Codular Sample cURL Request'
+			    CURLOPT_USERAGENT => 'Codular Sample cURL Request',
+			    CURLOPT_SSL_VERIFYPEER => false,
 			));
 			$downPage = curl_exec($curlDown);
 			curl_close($curlDown);
