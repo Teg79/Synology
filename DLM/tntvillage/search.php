@@ -16,9 +16,7 @@ class DLMSearchTntVillage
         if($this->debug){
             //header("Content-Type: text/plain");
             $response = file_get_contents('./response.html');
-            //echo $response;
-            echo "<pre>";
-            var_dump($this->get_rows($response));
+            $this->parse_rows($response);
         }
 
     }
@@ -43,7 +41,7 @@ class DLMSearchTntVillage
 
     public function parse($plugin, $response)
     {
-        $rows = $this->get_rows($response);
+        $rows = $this->parse_rows($response);
 
         foreach ($rows as $key => $value){
 
@@ -98,7 +96,7 @@ class DLMSearchTntVillage
         return $fields_string;
     }
 
-    public function get_rows($response){
+    public function parse_rows($response){
 
         $rows = $this->rows($response);
 
@@ -106,27 +104,19 @@ class DLMSearchTntVillage
         preg_match_all($pattern, $response, $result);
         $totalPage = $result[1][0];
 
-//        for ($currentPage = 1; $currentPage <= $totalPage; $currentPage++) {
-//            if($currentPage == 1)
-//                continue;
-//
-//                $curlDown = curl_init($link);
-//                curl_setopt_array($curlDown, array(
-//                    CURLOPT_RETURNTRANSFER => 1,
-//                    CURLOPT_URL => $link,
-//                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en; rv:1.9.0.4) Gecko/2008102920 AdCentriaIM/1.7 Firefox/3.0.4'
-//                ));
-//                $downPage = curl_exec($curlDown);
-//                curl_close($curlDown);
-//
-//            echo $currentPage;
-//        }
-//
-//
-//        var_dump($totalPage);
-//        die;
+        for($this->currentPage = 2; $this->currentPage <= $totalPage; $this->currentPage++){
 
+            $curl = curl_init();
+            $this->prepare($curl, $this->query);
+            $downPage = curl_exec($curl);
+            curl_close($curl);
 
+            $rows = array_merge($rows, $this->rows($downPage));
+        }
+
+        if($this->debug){
+            echo "<p>Total Results " . count($rows) . "</p>";
+        }
 
         return $rows;
     }
@@ -135,6 +125,11 @@ class DLMSearchTntVillage
         $pattern = '/<tr>(.+?)<\/tr>/ms';
         preg_match_all($pattern, $response, $rows);
         $rows = array_slice($rows[1], 1);
+
+        if($this->debug){
+            echo "<p>Page " . $this->currentPage . " parsed: " . count($rows) . " found</p>";
+        }
+
         return $rows;
     }
 
