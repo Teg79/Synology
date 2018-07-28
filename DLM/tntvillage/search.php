@@ -16,7 +16,7 @@ class DLMSearchTntVillage
         if($this->debug){
             //header("Content-Type: text/plain");
             $response = file_get_contents('./response.html');
-            $this->parse_rows($response);
+            $this->parse(null, $response);
         }
 
     }
@@ -53,7 +53,7 @@ class DLMSearchTntVillage
             $hash = "Hash unknown $key";
             $seeds = 0;
             $leechs = 0;
-            $category = "Unknown category";
+            $category = "All";
 
             //magnet
             $pattern = "/href='(.+?)'/";
@@ -74,9 +74,26 @@ class DLMSearchTntVillage
             $seeds = isset($cols[4]) ? $cols[4] : $seeds;
             //$c = isset($cols[5]) ? $cols[5] : 0;
 
-            $title = isset($cols[6]) ? str_replace("</a>","", $cols[6]) : $title;
+            if(isset($cols[6])){
+                $title = str_replace("</a>","", $cols[6]);
+                $title = html_entity_decode($title,ENT_QUOTES);
+            }
 
-            $plugin->addResult($title, $download, $size, $datetime, $page, $hash, $seeds, $leechs, $category);
+            if($this->debug){
+                print_r([
+                    'title' => $title,
+                    'download' => $download,
+                    'size' => $size,
+                    'datetime' => $datetime,
+                    'page' => $page,
+                    'hash' => $hash,
+                    'seeds' => $seeds,
+                    'leechs' => $leechs,
+                    'category' => $category,
+                ]);
+            }else {
+                $plugin->addResult($title, $download, $size, $datetime, $page, $hash, $seeds, $leechs, $category);
+            }
 
         }
 
