@@ -50,7 +50,7 @@ class DLMSearchTntVillage
             $size = 0;
             $datetime = "1970-01-01";
             $page = "Default page";
-            $hash = "Hash unknown";
+            $hash = "Hash unknown $key";
             $seeds = 0;
             $leechs = 0;
             $category = "Unknown category";
@@ -58,17 +58,23 @@ class DLMSearchTntVillage
             //magnet
             $pattern = "/href='(.+?)'/";
             preg_match_all($pattern, $value, $links);
-            $download = $links[1][1];
+            $download = isset($links[1][1]) ? $links[1][1] : $download;
 
 
             $pattern = '/<td.+?>(.+?)<\/td>/';
             preg_match_all($pattern, $value, $cols);
             $cols = $cols[1];
 
-            $leechs = $cols[3];
-            $seeds = $cols[4];
-            $c = $cols[5];
-            $title = str_replace("</a>","", $cols[6]);
+            $pattern = '/btih:(.+?)&/';
+            preg_match_all($pattern, $download, $result);
+            $hash = isset($result[1][0]) ? $result[1][0] : $hash;
+
+
+            $leechs = isset($cols[3]) ? $cols[3] : $leechs;
+            $seeds = isset($cols[4]) ? $cols[4] : $seeds;
+            //$c = isset($cols[5]) ? $cols[5] : 0;
+
+            $title = isset($cols[6]) ? str_replace("</a>","", $cols[6]) : $title;
 
             $plugin->addResult($title, $download, $size, $datetime, $page, $hash, $seeds, $leechs, $category);
 
@@ -136,4 +142,3 @@ class DLMSearchTntVillage
 }
 
 //new DLMSearchTntVillage(true);
-?>
