@@ -4,25 +4,108 @@ class DLMSearchTntVillage
 {
 
 
-    private $wurl = 'http://www.tntvillage.scambioetico.org/src/releaselist.php';
+    private $debug = false;
+    private $url = 'http://www.tntvillage.scambioetico.org/src/releaselist.php';
+    private $query = '';
+    private $currentPage = 1;
 
 
-    private $qurl = '';
-
-    public function __construct()
+    public function __construct($debug = false)
     {
+        $this->debug = $debug;
+        if($this->debug){
+            //header("Content-Type: text/plain");
+            $response = file_get_contents('./response.html');
+            $this->parse(null, $response);
+        }
 
-        $this->qurl = $this->wurl . $this->qurl;
     }
 
     public function prepare($curl, $query)
     {
+        $this->query = $query;
+        $fields_string = $this->fields_string($this->query);
 
-        $url = $this->qurl;
+        //set the url, number of POST vars, POST data
+        curl_setopt($curl, CURLOPT_URL, $this->url);
+        curl_setopt($curl, CURLOPT_POST, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $fields_string);
 
+        curl_setopt($curl, CURLOPT_FAILONERROR, 1);
+        curl_setopt($curl, CURLOPT_REFERER, $this->url);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 20);
+        curl_setopt($curl, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en; rv:1.9.0.4) Gecko/2008102920 AdCentriaIM/1.7 Firefox/3.0.4');
+    }
+
+    public function parse($plugin, $response)
+    {
+        $rows = $this->parse_rows($response);
+
+        foreach ($rows as $key => $value){
+
+            $title = "Unknown title";
+            $download = "Unknown download";
+            $size = 0;
+            $datetime = "1970-01-01";
+            $page = "Default page";
+            $hash = "Hash unknown $key";
+            $seeds = 0;
+            $leechs = 0;
+            $category = "All";
+
+            //magnet
+            $pattern = "/href='(.+?)'/";
+            preg_match_all($pattern, $value, $links);
+            $download = isset($links[1][1]) ? $links[1][1] : $download;
+
+
+            $pattern = '/<td.+?>(.+?)<\/td>/';
+            preg_match_all($pattern, $value, $cols);
+            $cols = $cols[1];
+
+            $pattern = '/btih:(.+?)&/';
+            preg_match_all($pattern, $download, $result);
+            $hash = isset($result[1][0]) ? $result[1][0] : $hash;
+
+
+            $leechs = isset($cols[3]) ? $cols[3] : $leechs;
+            $seeds = isset($cols[4]) ? $cols[4] : $seeds;
+            //$c = isset($cols[5]) ? $cols[5] : 0;
+
+            if(isset($cols[6])){
+                $title = str_replace("</a>","", $cols[6]);
+                $title = html_entity_decode($title,ENT_QUOTES);
+            }
+
+            if($this->debug){
+                print_r([
+                    'title' => $title,
+                    'download' => $download,
+                    'size' => $size,
+                    'datetime' => $datetime,
+                    'page' => $page,
+                    'hash' => $hash,
+                    'seeds' => $seeds,
+                    'leechs' => $leechs,
+                    'category' => $category,
+                ]);
+            }else {
+                $plugin->addResult($title, $download, $size, $datetime, $page, $hash, $seeds, $leechs, $category);
+            }
+
+        }
+
+        $res = count($rows);
+
+        return $res;
+    }
+
+    private function fields_string($query){
         $fields = array(
             'cat' => '0',
-            'page' => '1',
+            'page' => $this->currentPage,
             'srcrel' => urlencode($query)
         );
 
@@ -33,92 +116,46 @@ class DLMSearchTntVillage
         }
         rtrim($fields_string, '&');
 
-        //set the url, number of POST vars, POST data
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_POST, count($fields));
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $fields_string);
-
-        curl_setopt($curl, CURLOPT_FAILONERROR, 1);
-        curl_setopt($curl, CURLOPT_REFERER, $url);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 20);
-        curl_setopt($curl, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en; rv:1.9.0.4) Gecko/2008102920 AdCentriaIM/1.7 Firefox/3.0.4');
+        return $fields_string;
     }
 
-    public function parse($plugin, $response)
-    {
+    public function parse_rows($response){
 
-        // Load all links, 4 links for each result, 0 = torrent, 1 = magnet, 2 = category, 3 = forum page
-        $pattern = "/href='(.+?)'/";
-        preg_match_all($pattern, $response, $links);
+        $rows = $this->rows($response);
 
-        $res = 0;
+        $pattern = '/<span class=\'total\' a=\'(.*?)\'>/m';
+        preg_match_all($pattern, $response, $result);
+        $totalPage = $result[1][0];
 
-        for ($i = 0; $i < count($links[1]); $i++) {
-            $linkType = $i % 4;
-            $link = $links[1][$i];
-            //$plugin->addResult($linkType, $link, $linkType, $linkType, $link, $linkType, $linkType, $linkType, $linkType);
+        for($this->currentPage = 2; $this->currentPage <= $totalPage; $this->currentPage++){
 
-            if ($linkType == 3) {
-                $curlDown = curl_init($link);
-                curl_setopt_array($curlDown, array(
-                    CURLOPT_RETURNTRANSFER => 1,
-                    CURLOPT_URL => $link,
-                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en; rv:1.9.0.4) Gecko/2008102920 AdCentriaIM/1.7 Firefox/3.0.4'
-                ));
-                $downPage = curl_exec($curlDown);
-                curl_close($curlDown);
-                //$plugin->addResult($linkType, $downPage, $linkType, $linkType, $link, $linkType, $linkType, $linkType, $linkType);
-                //$res++;
+            $curl = curl_init();
+            $this->prepare($curl, $this->query);
+            $downPage = curl_exec($curl);
+            curl_close($curl);
 
-                $title = "Unknown title";
-                $download = "Unknown download";
-                $size = 0;
-                $datetime = "1970-01-01";
-                $page = "Default page";
-                $hash = "Hash unknown";
-                $seeds = 0;
-                $leechs = 0;
-                $category = "Unknown category";
-
-                $titlePattern = "/width='8' height='8' \/>&nbsp;<b>(.+)<\/b>(.+)<\/td>/";
-                preg_match_all($titlePattern, $downPage, $titleArray);
-                $title = $titleArray[1][0] . $titleArray[2][0];
-
-                $magnetPattern = "/(magnet:.+?)'/";
-                preg_match_all($magnetPattern, $downPage, $magnet);
-                $download = $magnet[1][0];
-
-                $sizePattern = "/Dimensione:<\/td>\s*<td>\s*(\d+)\s*mb/";
-                preg_match_all($sizePattern, $downPage, $sizeArray);
-                $size = $sizeArray[1][0] * 1024 * 1024;
-
-                $datePattern = "/id='last_seed'>\\s*(\\d{4}-\\d{2}-\\d{2}) \\d{2}:\\d{2}:\\d{2}/";
-                preg_match_all($datePattern, $downPage, $dateArray);
-                $datetime = $dateArray[1][0];
-
-                $page = $link;
-
-                $hashPattern = "/Info_hash:<\\/td><td>\\s*(.+?)\\s*<\\/td>/";
-                preg_match_all($hashPattern, $downPage, $hashArray);
-                $hash = $hashArray[1][0];
-
-                $seedsPattern = "/id='seeders'>\\s*(\\d*)\\s*<\\/td>/";
-                preg_match_all($seedsPattern, $downPage, $seedsArray);
-                $seeds = $seedsArray[1][0];
-
-                $leechsPattern = "/id='leechers'>\\s*(\\d*)\\s*<\\/td>/";
-                preg_match_all($leechsPattern, $downPage, $leechsArray);
-                $leechs = $leechsArray[1][0];
-
-                $plugin->addResult($title, $download, $size, $datetime, $page, $hash, $seeds, $leechs, $category);
-                $res++;
-            }
-
+            $rows = array_merge($rows, $this->rows($downPage));
         }
-        return $res;
+
+        if($this->debug){
+            echo "<p>Total Results " . count($rows) . "</p>";
+        }
+
+        return $rows;
     }
+
+    private function rows($response){
+        $pattern = '/<tr>(.+?)<\/tr>/ms';
+        preg_match_all($pattern, $response, $rows);
+        $rows = array_slice($rows[1], 1);
+
+        if($this->debug){
+            echo "<p>Page " . $this->currentPage . " parsed: " . count($rows) . " found</p>";
+        }
+
+        return $rows;
+    }
+
 }
 
-?>
+//new DLMSearchTntVillage(true);
