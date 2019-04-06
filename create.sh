@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-cd DLM/tntvillage/
-tar zcf tntvillage-search.dlm INFO search.php
+cd DLM/ilcorsaronero/
+tar zcf ilcorsaronero-search.dlm INFO search.php
 cd ../../
