@@ -4,14 +4,14 @@ class DLMSearchIlcorsaronero
 {
 
 
-    private $wurl = 'https://ilcorsaronero.pw/';
+    private $wurl = 'https://ilcorsaronero.xyz/';
 
 
     private $qurl = 'argh.php?search=%s';
 
     public function __construct()
     {
-
+	
         $this->qurl = $this->wurl . $this->qurl;
     }
 
