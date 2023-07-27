@@ -4,7 +4,7 @@ class DLMSearchIlcorsaronero
 {
 
 
-    private $wurl = 'https://ilcorsaronero.xyz/';
+    private $wurl = 'https://ilcorsaronero.info/';
 
 
     private $qurl = 'argh.php?search=%s';
